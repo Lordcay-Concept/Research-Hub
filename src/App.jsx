@@ -15,11 +15,9 @@ import {
   Button,
   HStack,
   VStack,
-  useBreakpointValue,
   Drawer,
   DrawerContent,
   DrawerOverlay,
-  useDisclosure,
 } from "@chakra-ui/react";
 import { HamburgerIcon, AddIcon } from "@chakra-ui/icons";
 
@@ -33,7 +31,7 @@ import Login from "./components/Login";
 import Signup from "./components/Signup";
 import ProfilePage from "./components/ProfilePage";
 
-function App() {
+function AppContent() {
   // --- AUTH & USER STATE ---
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("token"));
   const [currentUser, setCurrentUser] = useState(
@@ -46,9 +44,8 @@ function App() {
   const [showSignup, setShowSignup] = useState(false);
 
   // --- UI & NAVIGATION STATE ---
-  const isMobile = useBreakpointValue({ base: true, md: false });
-  const { isOpen: isSidebarOpen, onToggle, onClose } = useDisclosure();
-
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isSidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
   const [currentView, setCurrentView] = useState("chat");
   const [liveLocation, setLiveLocation] = useState("Abuja, Nigeria");
 
@@ -63,6 +60,17 @@ function App() {
 
   const globalBg = useColorModeValue("white", "#1e1e1e");
   const borderColor = useColorModeValue("gray.100", "gray.700");
+
+  // --- RESPONSIVE HANDLER ---
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) setSidebarOpen(true);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // --- DATA FETCHING ---
   const fetchHistorySummaries = async () => {
@@ -109,14 +117,14 @@ function App() {
     setQuestion("");
     setLiveAnswer("");
     setCurrentView("chat");
-    if (isMobile) onClose();
+    if (isMobile) setSidebarOpen(false);
   };
 
   const handleHistoryClick = async (item) => {
     setCurrentView("chat");
     setCurrentChatId(item.chatId);
     setLiveAnswer("");
-    if (isMobile) onClose();
+    if (isMobile) setSidebarOpen(false);
 
     if (isLoggedIn) {
       try {
@@ -138,15 +146,12 @@ function App() {
 
   const handleSearch = async () => {
     if (!question.trim()) return;
-
     const activeChatId = currentChatId || `chat_${Date.now()}`;
     const promptSent = question;
-
     const context = activeThread.flatMap((msg) => [
       { role: "user", content: msg.question },
       { role: "assistant", content: msg.answer },
     ]);
-
     const fullMessages = [...context, { role: "user", content: promptSent }];
 
     setActiveThread((prev) => [
@@ -174,8 +179,6 @@ function App() {
         }),
       });
 
-      if (!res.ok) throw new Error("Server connection failed");
-
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let accumulatedAnswer = "";
@@ -183,18 +186,14 @@ function App() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         const chunk = decoder.decode(value);
         const lines = chunk.split("\n");
-
         for (const line of lines) {
           if (line.startsWith("data: ")) {
             try {
               const data = JSON.parse(line.substring(6));
               if (data.content) {
-                if (accumulatedAnswer === "") {
-                  setLiveAnswer("");
-                }
+                if (accumulatedAnswer === "") setLiveAnswer("");
                 accumulatedAnswer += data.content;
                 setLiveAnswer(accumulatedAnswer);
               }
@@ -204,19 +203,16 @@ function App() {
           }
         }
       }
-
       setActiveThread((prev) => {
         const newThread = [...prev];
         newThread[newThread.length - 1].answer = accumulatedAnswer;
         return newThread;
       });
-
       setLiveAnswer("");
       if (!currentChatId) setCurrentChatId(activeChatId);
       fetchHistorySummaries();
     } catch (err) {
-      console.error(err);
-      setLiveAnswer("Error connecting to server. Please check your backend.");
+      setLiveAnswer("Error connecting to server.");
     } finally {
       setLoading(false);
     }
@@ -237,19 +233,15 @@ function App() {
 
   // --- AUTH & ACCOUNT SWITCHING ---
   const handleLoginSuccess = (userData) => {
-    const updatedAccounts = [
+    const updated = [
       ...allAccounts.filter((a) => a.email !== userData.email),
       userData,
     ];
-    setAllAccounts(updatedAccounts);
+    setAllAccounts(updated);
     setCurrentUser(userData);
     setIsLoggedIn(true);
     setShowAuthView(false);
-    setActiveThread([]);
-    setCurrentChatId(null);
-    setLiveAnswer("");
-
-    localStorage.setItem("accounts", JSON.stringify(updatedAccounts));
+    localStorage.setItem("accounts", JSON.stringify(updated));
     localStorage.setItem("user", JSON.stringify(userData));
     localStorage.setItem("token", userData.token);
   };
@@ -258,7 +250,6 @@ function App() {
     setCurrentUser(account);
     localStorage.setItem("user", JSON.stringify(account));
     localStorage.setItem("token", account.token);
-
     setCurrentView("chat");
     setActiveThread([]);
     setCurrentChatId(null);
@@ -269,14 +260,12 @@ function App() {
     const remaining = allAccounts.filter((a) => a.email !== currentUser?.email);
     setAllAccounts(remaining);
     localStorage.setItem("accounts", JSON.stringify(remaining));
-
     if (remaining.length > 0) {
       switchAccount(remaining[0]);
     } else {
       localStorage.clear();
       setIsLoggedIn(false);
       setCurrentUser(null);
-      setActiveThread([]);
       setHistory([]);
       setCurrentView("chat");
     }
@@ -291,12 +280,12 @@ function App() {
       location={liveLocation}
       isLoggedIn={isLoggedIn}
       onLoginOpen={() => setShowAuthView(true)}
-      onClose={onClose}
+      onClose={() => setSidebarOpen(false)}
     />
   );
 
   return (
-    <ChakraProvider>
+    <Flex h="100vh" w="100vw" bg={globalBg} overflow="hidden">
       {showAuthView ? (
         showSignup ? (
           <Signup
@@ -311,17 +300,21 @@ function App() {
           />
         )
       ) : (
-        <Flex h="100vh" w="100vw" bg={globalBg} overflow="hidden">
-          {/* SIDEBAR*/}
+        <>
+          {/* Desktop Sidebar */}
           {!isMobile && (
             <Box w="260px" borderRight="1px" borderColor={borderColor}>
               {SidebarContent}
             </Box>
           )}
 
-          {/* SIDEBAR */}
+          {/* Mobile Sidebar */}
           {isMobile && (
-            <Drawer isOpen={isSidebarOpen} placement="left" onClose={onClose}>
+            <Drawer
+              isOpen={isSidebarOpen}
+              placement="left"
+              onClose={() => setSidebarOpen(false)}
+            >
               <DrawerOverlay />
               <DrawerContent maxW="280px">{SidebarContent}</DrawerContent>
             </Drawer>
@@ -340,10 +333,10 @@ function App() {
                 <IconButton
                   icon={<HamburgerIcon />}
                   variant="ghost"
-                  onClick={onToggle}
+                  onClick={() => setSidebarOpen(true)}
                   size="sm"
                   mr={2}
-                  aria-label="Toggle Sidebar"
+                  aria-label="Menu"
                 />
                 <Header />
               </Flex>
@@ -354,7 +347,6 @@ function App() {
                     as={Button}
                     rounded="full"
                     variant="link"
-                    cursor="pointer"
                     minW={0}
                   >
                     <Avatar
@@ -375,7 +367,6 @@ function App() {
                       </Text>
                     </Box>
                     <MenuDivider />
-
                     {allAccounts
                       .filter((acc) => acc.email !== currentUser?.email)
                       .map((acc) => (
@@ -400,7 +391,6 @@ function App() {
                           </HStack>
                         </MenuItem>
                       ))}
-
                     <MenuItem
                       icon={<AddIcon />}
                       onClick={() => {
@@ -444,10 +434,17 @@ function App() {
               )}
             </Box>
           </Flex>
-        </Flex>
+        </>
       )}
-    </ChakraProvider>
+    </Flex>
   );
 }
 
-export default App;
+// THE WRAPPER THAT FIXES THE CRASH
+export default function App() {
+  return (
+    <ChakraProvider>
+      <AppContent />
+    </ChakraProvider>
+  );
+}
