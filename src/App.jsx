@@ -66,7 +66,7 @@ function App() {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      // Auto-open sidebar on desktop resize, close on mobile resize
+      // On desktop, keep it open by default; on mobile, close it
       if (!mobile) setSidebarOpen(true);
       else setSidebarOpen(false);
     };
@@ -299,14 +299,14 @@ function App() {
           )
         ) : (
           <>
-            {/* Desktop Sidebar: Now toggles visibility based on isSidebarOpen */}
+            {/* DESKTOP SIDEBAR FIXED TOGGLE */}
             {!isMobile && isSidebarOpen && (
               <Box w="260px" borderRight="1px" borderColor={borderColor}>
                 {sidebarContent}
               </Box>
             )}
 
-            {/* Mobile Sidebar */}
+            {/* MOBILE SIDEBAR */}
             {isMobile && (
               <Drawer
                 isOpen={isSidebarOpen}
