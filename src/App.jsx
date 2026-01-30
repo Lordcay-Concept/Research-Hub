@@ -16,6 +16,10 @@ import {
   HStack,
   VStack,
   useBreakpointValue,
+  Drawer,
+  DrawerContent,
+  DrawerOverlay,
+  useDisclosure,
 } from "@chakra-ui/react";
 import { HamburgerIcon, AddIcon } from "@chakra-ui/icons";
 
@@ -43,11 +47,7 @@ function App() {
 
   // --- UI & NAVIGATION STATE ---
   const isMobile = useBreakpointValue({ base: true, md: false });
-  const [isSidebarOpen, setSidebarOpen] = useState(!isMobile);
-
-  useEffect(() => {
-    setSidebarOpen(!isMobile);
-  }, [isMobile]);
+  const { isOpen: isSidebarOpen, onToggle, onClose } = useDisclosure();
 
   const [currentView, setCurrentView] = useState("chat");
   const [liveLocation, setLiveLocation] = useState("Abuja, Nigeria");
@@ -109,14 +109,14 @@ function App() {
     setQuestion("");
     setLiveAnswer("");
     setCurrentView("chat");
-    if (isMobile) setSidebarOpen(false); 
+    if (isMobile) onClose();
   };
 
   const handleHistoryClick = async (item) => {
     setCurrentView("chat");
     setCurrentChatId(item.chatId);
     setLiveAnswer("");
-    if (isMobile) setSidebarOpen(false); 
+    if (isMobile) onClose();
 
     if (isLoggedIn) {
       try {
@@ -282,6 +282,19 @@ function App() {
     }
   };
 
+  const SidebarContent = (
+    <Sidebar
+      history={history}
+      onNewResearch={handleNewResearch}
+      onHistoryClick={handleHistoryClick}
+      onClearHistory={handleClearHistory}
+      location={liveLocation}
+      isLoggedIn={isLoggedIn}
+      onLoginOpen={() => setShowAuthView(true)}
+      onClose={onClose}
+    />
+  );
+
   return (
     <ChakraProvider>
       {showAuthView ? (
@@ -299,26 +312,22 @@ function App() {
         )
       ) : (
         <Flex h="100vh" w="100vw" bg={globalBg} overflow="hidden">
-          <Box
-            display={isSidebarOpen ? "block" : "none"}
-            position={isMobile ? "absolute" : "relative"}
-            zIndex={isMobile ? "100" : "1"}
-            h="100%"
-            bg={globalBg}
-          >
-            <Sidebar
-              history={history}
-              onNewResearch={handleNewResearch}
-              onHistoryClick={handleHistoryClick}
-              onClearHistory={handleClearHistory}
-              location={liveLocation}
-              isLoggedIn={isLoggedIn}
-              onLoginOpen={() => setShowAuthView(true)}
-              onClose={() => isMobile && setSidebarOpen(false)}
-            />
-          </Box>
+          {/* SIDEBAR*/}
+          {!isMobile && (
+            <Box w="260px" borderRight="1px" borderColor={borderColor}>
+              {SidebarContent}
+            </Box>
+          )}
 
-          <Flex flex={1} direction="column" w="100%">
+          {/* SIDEBAR */}
+          {isMobile && (
+            <Drawer isOpen={isSidebarOpen} placement="left" onClose={onClose}>
+              <DrawerOverlay />
+              <DrawerContent maxW="280px">{SidebarContent}</DrawerContent>
+            </Drawer>
+          )}
+
+          <Flex flex={1} direction="column" w="100%" overflow="hidden">
             <Flex
               align="center"
               justify="space-between"
@@ -331,7 +340,7 @@ function App() {
                 <IconButton
                   icon={<HamburgerIcon />}
                   variant="ghost"
-                  onClick={() => setSidebarOpen(!isSidebarOpen)}
+                  onClick={onToggle}
                   size="sm"
                   mr={2}
                   aria-label="Toggle Sidebar"
@@ -356,7 +365,7 @@ function App() {
                       color="white"
                     />
                   </MenuButton>
-                  <MenuList zIndex="20">
+                  <MenuList zIndex="1000">
                     <Box px={4} py={2}>
                       <Text fontWeight="bold" fontSize="sm">
                         {currentUser?.name || "Guest User"}
