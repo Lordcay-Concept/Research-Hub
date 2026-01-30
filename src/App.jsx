@@ -66,7 +66,9 @@ function App() {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
+      // Auto-open sidebar on desktop resize, close on mobile resize
       if (!mobile) setSidebarOpen(true);
+      else setSidebarOpen(false);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -297,11 +299,14 @@ function App() {
           )
         ) : (
           <>
-            {!isMobile && (
+            {/* Desktop Sidebar: Now toggles visibility based on isSidebarOpen */}
+            {!isMobile && isSidebarOpen && (
               <Box w="260px" borderRight="1px" borderColor={borderColor}>
                 {sidebarContent}
               </Box>
             )}
+
+            {/* Mobile Sidebar */}
             {isMobile && (
               <Drawer
                 isOpen={isSidebarOpen}
@@ -326,10 +331,10 @@ function App() {
                   <IconButton
                     icon={<HamburgerIcon />}
                     variant="ghost"
-                    onClick={() => setSidebarOpen(true)}
+                    onClick={() => setSidebarOpen(!isSidebarOpen)}
                     size="sm"
                     mr={2}
-                    aria-label="Menu"
+                    aria-label="Toggle Sidebar"
                   />
                   <Header />
                 </Flex>
