@@ -15,7 +15,7 @@ import {
 } from "@chakra-ui/react";
 
 // --- API CONFIG IMPORT ---
-import API_BASE_URL from "../apiConfig";
+import API_BASE_URL from "../config";
 
 const Signup = ({ onFlip, onSignupSuccess }) => {
   const [formData, setFormData] = useState({

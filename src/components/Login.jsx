@@ -18,7 +18,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 
 // --- API CONFIG IMPORT ---
-import API_BASE_URL from "../apiConfig";
+import API_BASE_URL from "../config";
 
 const Login = ({ onLoginSuccess, onFlip, onCancel }) => {
   const [email, setEmail] = useState("");

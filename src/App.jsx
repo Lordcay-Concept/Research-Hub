@@ -19,7 +19,7 @@ import {
 import { HamburgerIcon, AddIcon } from "@chakra-ui/icons";
 
 // --- API CONFIG IMPORT ---
-import API_BASE_URL from "./apiConfig";
+import API_BASE_URL from "./config";
 
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
@@ -127,15 +127,17 @@ function App() {
     }
   };
 
-  const handleSearch = async () => {
+ const handleSearch = async () => {
     if (!question.trim()) return;
 
     const activeChatId = currentChatId || `chat_${Date.now()}`;
     const promptSent = question;
 
+    
+    setActiveThread((prev) => [...prev, { question: promptSent, answer: "", chatId: activeChatId }]);
     setLoading(true);
-    setQuestion("");
-    setLiveAnswer("Connecting to Research Hub Stream");
+    setQuestion(""); 
+    setLiveAnswer("Connecting to Research Hub Stream...");
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/ask`, {
@@ -153,6 +155,8 @@ function App() {
         }),
       });
 
+      if (!res.ok) throw new Error("Server connection failed");
+
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let accumulatedAnswer = "";
@@ -169,7 +173,7 @@ function App() {
             try {
               const data = JSON.parse(line.substring(6));
               if (data.content) {
-                if (accumulatedAnswer === "") {
+              if (accumulatedAnswer === "") {
                   setLiveAnswer("");
                 }
                 accumulatedAnswer += data.content;
@@ -182,19 +186,20 @@ function App() {
         }
       }
 
-      const newMsg = {
-        question: promptSent,
-        answer: accumulatedAnswer,
-        chatId: activeChatId,
-        tier,
-      };
-      setActiveThread((prev) => [...prev, newMsg]);
+      
+      setActiveThread((prev) => {
+        const newThread = [...prev];
+        newThread[newThread.length - 1].answer = accumulatedAnswer;
+        return newThread;
+      });
+      
       setLiveAnswer("");
-
       if (!currentChatId) setCurrentChatId(activeChatId);
       fetchHistorySummaries();
+      
     } catch (err) {
-      setLiveAnswer("Error connecting to server.");
+      console.error(err);
+      setLiveAnswer("Error connecting to server. Please check your backend.");
     } finally {
       setLoading(false);
     }

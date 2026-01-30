@@ -25,7 +25,7 @@ import {
 import { SettingsModal } from "./SettingsModal";
 
 // --- API CONFIG IMPORT ---
-import API_BASE_URL from "../apiConfig";
+import API_BASE_URL from "../config";
 
 const Sidebar = ({
   history,

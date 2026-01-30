@@ -20,7 +20,7 @@ import {
 import { ArrowBackIcon } from "@chakra-ui/icons";
 
 // --- API CONFIG IMPORT ---
-import API_BASE_URL from "../apiConfig";
+import API_BASE_URL from "../config";
 
 const ProfilePage = ({ user, setCurrentUser, onBack }) => {
   const [name, setName] = useState(user?.name || "");
