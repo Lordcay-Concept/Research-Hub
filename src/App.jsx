@@ -127,16 +127,25 @@ function App() {
     }
   };
 
- const handleSearch = async () => {
+  const handleSearch = async () => {
     if (!question.trim()) return;
 
     const activeChatId = currentChatId || `chat_${Date.now()}`;
     const promptSent = question;
 
-    
-    setActiveThread((prev) => [...prev, { question: promptSent, answer: "", chatId: activeChatId }]);
+    const context = activeThread.flatMap((msg) => [
+      { role: "user", content: msg.question },
+      { role: "assistant", content: msg.answer },
+    ]);
+
+    const fullMessages = [...context, { role: "user", content: promptSent }];
+
+    setActiveThread((prev) => [
+      ...prev,
+      { question: promptSent, answer: "", chatId: activeChatId },
+    ]);
     setLoading(true);
-    setQuestion(""); 
+    setQuestion("");
     setLiveAnswer("Connecting to Research Hub Stream...");
 
     try {
@@ -149,6 +158,7 @@ function App() {
             : "",
         },
         body: JSON.stringify({
+          messages: fullMessages,
           question: promptSent,
           chatId: activeChatId,
           tier,
@@ -173,7 +183,7 @@ function App() {
             try {
               const data = JSON.parse(line.substring(6));
               if (data.content) {
-              if (accumulatedAnswer === "") {
+                if (accumulatedAnswer === "") {
                   setLiveAnswer("");
                 }
                 accumulatedAnswer += data.content;
@@ -186,17 +196,15 @@ function App() {
         }
       }
 
-      
       setActiveThread((prev) => {
         const newThread = [...prev];
         newThread[newThread.length - 1].answer = accumulatedAnswer;
         return newThread;
       });
-      
+
       setLiveAnswer("");
       if (!currentChatId) setCurrentChatId(activeChatId);
       fetchHistorySummaries();
-      
     } catch (err) {
       console.error(err);
       setLiveAnswer("Error connecting to server. Please check your backend.");
